@@ -2,6 +2,10 @@ import React, { Component } from 'react'
 import {Spinner} from 'react-bootstrap'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
+import {API_URL} from '../config'
+import {Redirect} from 'react-router-dom'
+
+
 
 class TodoDetail extends Component {
 
@@ -17,7 +21,7 @@ class TodoDetail extends Component {
         try {
             //check the `<Routes>` in App.js. That's where the params `todoId` comes from
             let todoId = this.props.match.params.todoId
-            let response = await axios.get(`http://localhost:5005/api/todos/${todoId}`)
+            let response = await axios.get(`${API_URL}/api/todos/${todoId}`)
             this.setState({
                 todoDetail: response.data
             })
@@ -28,6 +32,13 @@ class TodoDetail extends Component {
     }
 
     render() {
+
+        
+		if (!this.props.user) {
+			//redirect to signin page 
+			return <Redirect to={'/signin'} />
+		}
+
 
         if (!this.state.todoDetail) {
             return <Spinner animation="border" variant="primary" />

@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import {Button, Spinner} from  'react-bootstrap'
 import axios from 'axios'
-
+import {API_URL} from '../config'
 
 
 class EditForm extends Component {
@@ -18,7 +18,7 @@ class EditForm extends Component {
         try {
             //check the `<Routes>` in App.js. That's where the params `todoId` comes from
             let todoId = this.props.match.params.todoId
-            let response = await axios.get(`http://localhost:5005/api/todos/${todoId}`)
+            let response = await axios.get(`${API_URL}/api/todos/${todoId}`)
             this.setState({
                 todoDetail: response.data
             })
