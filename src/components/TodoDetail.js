@@ -53,6 +53,12 @@ class TodoDetail extends Component {
                 <h6>
                     Description: {todoDetail.description}
                 </h6>
+                {
+                    todoDetail.image && (
+                        <img src={todoDetail.image} alt={todoDetail.name} />
+                    )
+                }
+                
                 <Link to={`/todo/${todoDetail._id}/edit`}>
                     <button  >
                         Edit 

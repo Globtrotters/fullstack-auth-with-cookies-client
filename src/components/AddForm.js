@@ -21,9 +21,10 @@ class AddForm extends Component {
 		}
 
 		return (
-			<form onSubmit={this.props.onAdd}  >
+			<form onSubmit={this.props.onAdd} encType="multipart/form-data" >
 				<input  name="name"  type="text"  placeholder="Enter name"/>
 				<input  name="description"  type="text"  placeholder="Enter desc"/>
+				<input type="file" name="myImage" accept="image/png, image/jpg" />
 				<Button  type="submit"  >Submit</Button>
 			</form>
 		)

@@ -9,6 +9,14 @@ import EditForm from './components/EditForm'
 import SignIn from './components/SignIn'
 import SignUp from './components/SignUp'
 import {API_URL} from './config'
+import NotFound from "./components/NotFound";
+import ChatBot from "./components/ChatBot";
+import MyCalendar from './components/MyCalendar'
+// import MyMap from "./components/MyMap";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
+import CheckoutForm from './components/CheckoutForm'
+//import './App.css'
 
 class App extends Component {
 
@@ -46,14 +54,28 @@ class App extends Component {
     }
   }
 
-  handleAddTodo = (event) => {
+  handleAddTodo = async (event) => {
 
     event.preventDefault()
+
+    //First upload the image to cloudinary
+    // then send the image url to our /api/create request
+    
+    // How to grab the image from our input 
+    console.log(event.target.myImage.files[0] )
+
+    let formData = new FormData()
+    formData.append('imageUrl', event.target.myImage.files[0])
+
+    let imgResponse = await axios.post(`${API_URL}/api/upload`, formData)
+    console.log(imgResponse)
+
 
     let newTodo = {
       name: event.target.name.value,
       description: event.target.description.value,
-      completed: false
+      completed: false,
+      image: imgResponse.data.image
     }
 
     // Pass the data in POST requests as the second parameter
@@ -203,15 +225,29 @@ class App extends Component {
 
   render() {
     console.log('App props', this.props)
+    const promise = loadStripe("pk_test_51BTUDGJAJfZb9HEBwDg86TN1KNprHjkfipXmEDMb0gSCassK5T3ZfxsAbcgKVmAIXF7oZ6ItlZZbXO6idTHE67IM007EwQ4uN3");
 
     if (this.state.fetchingUser) {
       return <p>Loading . . . </p>
     }
 
+    /*
+
+    return (
+      <div>
+        <Elements stripe={promise}>
+          <CheckoutForm />
+        </Elements>
+      </div>
+    )
+    */
 
     return (
       <div >
           <MyNav user={this.state.user} onLogOut={this.handleLogOut} />
+          <MyCalendar />
+          <ChatBot />
+          {/* <MyMap /> */}
           <Switch>
               <Route exact path={'/'}  render={() => {
                 return <TodoList  todos={this.state.todos} />
@@ -231,6 +267,7 @@ class App extends Component {
               <Route  path="/signup"  render={(routeProps) => {
                 return  <SignUp onSignUp={this.handleSignUp} {...routeProps}  />
               }}/>
+              <Route component={NotFound} />
           </Switch>
       </div>
     );
