@@ -1,5 +1,5 @@
 import { Switch, Route, withRouter } from "react-router-dom";
-import React, { Component } from 'react'
+import React, { useState, useEffect } from 'react'
 import MyNav from './components/MyNav'
 import axios from 'axios'
 import TodoList from "./components/TodoList";
@@ -12,49 +12,43 @@ import {API_URL} from './config'
 import NotFound from "./components/NotFound";
 import ChatBot from "./components/ChatBot";
 import MyCalendar from './components/MyCalendar'
-// import MyMap from "./components/MyMap";
+import MyMap from "./components/MyMap";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import CheckoutForm from './components/CheckoutForm'
 //import './App.css'
 
-class App extends Component {
+function App(props) {
 
-  state = {
-    todos: [],
-    user: null,
-    myError: null, 
-    fetchingUser: true, 
-  }
+  const [todos, updateTodos] = useState([])
+  const [user, updateUser] = useState(null)
+  const [myError, updateError] = useState(null)
+  const [fetchingUser, updateFetchingUser] = useState(true)
 
-  // Make your /api/todos requst here
-  async componentDidMount(){
-    try {
-      // fetch all the initial todos to show on the home page
-        let response = await axios.get(`${API_URL}/api/todos`, {withCredentials: true})
-        console.log(response.data)
-        this.setState({
-          todos: response.data
-        })
+  useEffect(() => {
+    const getData = async () => {
+      try {
+        // fetch all the initial todos to show on the home page
+          let response = await axios.get(`${API_URL}/api/todos`, {withCredentials: true})
+          updateTodos(response.data)
 
-
-     // fetch the loggedInUser if present
-        let userResponse = await axios.get(`${API_URL}/api/user`, {withCredentials: true})
-        this.setState({
-          user: userResponse.data,
-          fetchingUser: false,
-        })
-
-    }  
-    catch(err){
-      console.log('Todo fetch failed', err)
-      this.setState({
-        fetchingUser: false,
-      })
+       // fetch the loggedInUser if present
+          let userResponse = await axios.get(`${API_URL}/api/user`, {withCredentials: true})
+          updateUser(userResponse.data)
+      }  
+      catch(err){
+        updateFetchingUser(false)
+      }
     }
-  }
+    getData()
+  }, [])
 
-  handleAddTodo = async (event) => {
+  useEffect(() => {
+    props.history.push('/')
+  }, [todos, user])
+
+
+  const handleAddTodo = async (event) => {
 
     event.preventDefault()
 
@@ -68,8 +62,6 @@ class App extends Component {
     formData.append('imageUrl', event.target.myImage.files[0])
 
     let imgResponse = await axios.post(`${API_URL}/api/upload`, formData)
-    console.log(imgResponse)
-
 
     let newTodo = {
       name: event.target.name.value,
@@ -80,77 +72,52 @@ class App extends Component {
 
     // Pass the data in POST requests as the second parameter
     // create the todo in the DB
-    axios.post(`${API_URL}/api/create`, newTodo, {withCredentials: true})
-      .then((response) => {
-          // Also update the state locally
-          // use the newly created to from your DB and not the local todo that we created above.
-
-          this.setState({
-            todos: [response.data, ...this.state.todos]
-          }, () => {
-              // to do something synchronous with the setState
-
-              // redirects the app to a certain url
-              // we're using the history push method to redirect it to any url we want
-              this.props.history.push('/')
-          })
-      })
-      .catch(() => {
-        console.log('Adding todo failed')
-      })
-
+    try {
+      let todoResponse = await axios.post(`${API_URL}/api/create`, newTodo, {withCredentials: true})
+      updateTodos( [todoResponse.data, ...todos])
+    }
+    catch(err){
+      updateError(err.response.data.error)
+    }
+  
   }
 
-  handleDeleteTodo = (todoId) => {
+  const handleDeleteTodo = async (todoId) => {
     // delete the todo from the DB
-    axios.delete(`${API_URL}/api/todos/${todoId}`, {withCredentials: true})
-      .then(() => {
-        // and then also filter and remove the todo from the local state
-        let filteredTodos = this.state.todos.filter((todo) => {
-          return todo._id !== todoId
-        })
-
-        //update the state and redirect synchronously
-        this.setState({
-          todos: filteredTodos
-        } , () => {
-          this.props.history.push('/')
-        })
-
+    try {
+      await axios.delete(`${API_URL}/api/todos/${todoId}`, {withCredentials: true})
+      let filteredTodos = todos.filter((todo) => {
+        return todo._id !== todoId
       })
-      .catch(() => {
-        console.log('Delete failed')
-      })
+      updateTodos( filteredTodos)
+    }
+    catch(err){
+      updateError(err.response.data.error)
+    }
+  
   }
 
-  handleEditTodo = (event, todo) => {
+  const handleEditTodo = async (event, todo) => {
     event.preventDefault()
 
     // pass a second parameter to the patch for sending info to your server inside req.body
-    axios.patch(`${API_URL}/api/todos/${todo._id}`, todo, {withCredentials: true})
-      .then(() => {
-          // also update your local state here and redirect to home page
-          // mapping over all the todos and updating the one that was edited
-          let updatedTodos = this.state.todos.map((singleTodo) => {
-              if (singleTodo._id === todo._id) {
-                singleTodo.name = todo.name
-                singleTodo.description = todo.description
-              } 
-            return singleTodo
-          })
-
-          this.setState({
-            todos: updatedTodos
-          }, () => {
-             this.props.history.push('/')
-          })
+    await axios.patch(`${API_URL}/api/todos/${todo._id}`, todo, {withCredentials: true})
+    try {
+      let updatedTodos = todos.map((singleTodo) => {
+        if (singleTodo._id === todo._id) {
+          singleTodo.name = todo.name
+          singleTodo.description = todo.description
+        } 
+        return singleTodo
       })
-      .catch(() => {
-          console.log('Edit failed')
-      })
+      updateTodos(updatedTodos)
+    }
+    catch(err){
+      updateError(err.response.data.error)
+    }
   }
 
-  handleSignUp = async (event) => {
+  const handleSignUp = async (event) => {
     event.preventDefault()
     // event.target here is a `<form>` node
     const {username, email, password} = event.target
@@ -165,14 +132,14 @@ class App extends Component {
     // make a POST signup request to the server
     try {
       await axios.post(`${API_URL}/api/signup`, newUser, {withCredentials: true})
-      this.props.history.push('/')
+      props.history.push('/')
     }
     catch(err) {
       console.log('Signup failed', err)
     }
   }
 
-  handleSignIn = async (event) => {
+  const handleSignIn = async (event) => {
     event.preventDefault()
     console.log('Sign in works!!!! Yippeeee')
      // event.target here is a `<form>` node
@@ -186,48 +153,29 @@ class App extends Component {
  
      // make a POST signin request to the server
      try {
-       let response = await axios.post(`${API_URL}/api/signin`, myUser, {withCredentials: true})
-       this.setState({
-         user: response.data
-       }, () => {
-
-          this.props.history.push('/')
-       })
-       
+        let response = await axios.post(`${API_URL}/api/signin`, myUser, {withCredentials: true})
+        updateUser(response.data) 
      }
      catch(err) {
-       console.log('Signup failed', err.response.data)
-       // axios vides us the server response in `response.data`
-       // we put `.error` because our server gives us an object with an `error` key  
-       this.setState({
-          myError:  err.response.data.error
-       })
+        updateError(err.response.data.error)
      }
   }
 
 
-  handleLogOut = async () => {
+  const handleLogOut = async () => {
     try {
-
       await axios.post(`${API_URL}/api/logout`, {}, {withCredentials: true})
-      // clearing the user once they logout
-      this.setState({
-        user: null
-      } , () => {
-        this.props.history.push('/')
-      })
-
+      updateUser(null)
     }
     catch(err) {
-      console.log('Logout failed', err)
+      updateError(err.response.data.error)
     }
   }
 
-  render() {
-    console.log('App props', this.props)
-    const promise = loadStripe("pk_test_51BTUDGJAJfZb9HEBwDg86TN1KNprHjkfipXmEDMb0gSCassK5T3ZfxsAbcgKVmAIXF7oZ6ItlZZbXO6idTHE67IM007EwQ4uN3");
 
-    if (this.state.fetchingUser) {
+  const promise = loadStripe("pk_test_51BTUDGJAJfZb9HEBwDg86TN1KNprHjkfipXmEDMb0gSCassK5T3ZfxsAbcgKVmAIXF7oZ6ItlZZbXO6idTHE67IM007EwQ4uN3");
+
+    if (fetchingUser) {
       return <p>Loading . . . </p>
     }
 
@@ -244,34 +192,34 @@ class App extends Component {
 
     return (
       <div >
-          <MyNav user={this.state.user} onLogOut={this.handleLogOut} />
+          <MyNav user={user} onLogOut={handleLogOut} />
           <MyCalendar />
           <ChatBot />
-          {/* <MyMap /> */}
+          <MyMap />
           <Switch>
               <Route exact path={'/'}  render={() => {
-                return <TodoList  todos={this.state.todos} />
+                return <TodoList  todos={todos} />
               }} />
               <Route exact path={'/todo/:todoId'} render={(routeProps) => {
-                return <TodoDetail user={this.state.user} {...routeProps} onDelete={this.handleDeleteTodo} />
+                return <TodoDetail user={user} {...routeProps} onDelete={handleDeleteTodo} />
               }} />
               <Route path={'/todo/:todoId/edit'} render={(routeProps) => {
-                return <EditForm {...routeProps}  onEdit={this.handleEditTodo} />
+                return <EditForm {...routeProps}  onEdit={handleEditTodo} />
               }} />
               <Route path={'/add-form'} render={() => {
-                 return <AddForm user={this.state.user} onAdd={this.handleAddTodo}/>
+                 return <AddForm user={user} onAdd={handleAddTodo}/>
               }} />
               <Route  path="/signin"  render={(routeProps) => {
-                return  <SignIn  error={this.state.myError} onSignIn={this.handleSignIn} {...routeProps}  />
+                return  <SignIn  error={myError} onSignIn={handleSignIn} {...routeProps}  />
               }}/>
               <Route  path="/signup"  render={(routeProps) => {
-                return  <SignUp onSignUp={this.handleSignUp} {...routeProps}  />
+                return  <SignUp onSignUp={handleSignUp} {...routeProps}  />
               }}/>
               <Route component={NotFound} />
           </Switch>
       </div>
     );
-  }
 }
+
 
 export default withRouter(App);
